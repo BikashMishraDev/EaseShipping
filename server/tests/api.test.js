@@ -56,7 +56,9 @@ test('project CRUD and ownership isolation', { skip }, async () => {
   assert.equal((await b.call('PATCH', `/projects/${id}`, { name: 'hacked' })).status, 404);
   assert.equal((await b.call('DELETE', `/projects/${id}`)).status, 404);
   assert.equal((await b.call('POST', `/projects/${id}/reports/analysis`, {})).status, 404);
-  assert.equal((await a.call('PATCH', `/projects/${id}`, { description: 'x', $where: '1' })).status, 400);
+  const injected = await a.call('PATCH', `/projects/${id}`, { description: 'x', $where: '1' });
+  assert.equal(injected.status, 200); // operator key is stripped, not executed
+  assert.equal(injected.json.project.$where, undefined);
   assert.equal((await a.call('POST', `/projects/${id}/archive`, { archived: true })).status, 200);
   assert.equal((await a.call('DELETE', `/projects/${id}`)).status, 200);
 });
