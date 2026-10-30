@@ -8,7 +8,7 @@ const source = new Schema({
 
 const classification = new Schema({
   htsno: String, description: String, generalRate: String,
-  rate: Schema.Types.Mixed, reasoning: String, missingInfo: [String],
+  rate: Schema.Types.Mixed, additionalDutyNote: { type: Boolean, default: false }, reasoning: String, missingInfo: [String],
   confidence: { type: String, enum: ['low', 'medium', 'high', null], default: null },
   sourceIds: [String], flagged: { type: Boolean, default: false }, selected: { type: Boolean, default: false },
 }, { _id: false });

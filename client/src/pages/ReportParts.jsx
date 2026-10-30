@@ -29,6 +29,8 @@ export function ClassificationCard({ c, sources, onFlag, onSelect }) {
         </div>
       </div>
       <p className="mt-3 text-sm"><span className="font-medium">General duty rate:</span> {c.generalRate || 'not listed'}</p>
+      {c.additionalDutyNote && <p className="mt-2 text-sm text-rust">The schedule links this line to a Chapter 99 measure, so additional duties may apply.</p>}
+      <p className="mt-1 text-xs text-slate">This rate is the base schedule rate only. Additional duties and other tariff programs are not included.</p>
       <p className="mt-2 text-sm"><span className="font-medium">Why it may fit:</span> {c.reasoning}</p>
       {c.missingInfo?.length > 0 && <p className="mt-2 text-sm text-amber"><span className="font-medium">Could change if known:</span> {c.missingInfo.join('; ')}</p>}
       {src.map((s) => (

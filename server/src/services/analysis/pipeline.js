@@ -2,7 +2,7 @@ import { aiStatus, AIError } from '../ai/index.js';
 import { projectMissing } from './missing.js';
 import { CORRIDORS, corridorKey } from './checklist-base.js';
 import { normalizeProduct, classify } from '../classification/index.js';
-import { searchHts, SOURCE_INFO } from '../trade-research/usitc.js';
+import { currentRelease, releaseLabel, retrieveCandidates, SOURCE_INFO } from '../trade-research/usitc.js';
 import { parseGeneralRate } from '../landed-cost/rates.js';
 import { estimateForProject } from '../landed-cost/build.js';
 
@@ -77,32 +77,31 @@ export async function runAnalysis(project, docs) {
     for (const m of norm.missingInformation) missingInfo.push({ field: m.field, label: m.field, severity: 'affects_classification', why: m.whyItMatters });
     stage('Normalize product', 'ok', `Identified as: ${norm.normalizedProduct.productType}`);
 
-    // Retrieve official HTS data
-    const rows = new Map(); const errors = [];
-    for (const kw of norm.searchKeywords) {
-      try { for (const r of await searchHts(kw)) if (!rows.has(r.htsno)) rows.set(r.htsno, r); }
-      catch (e) { errors.push(`${kw}: ${e.message}`); }
-    }
-    const candidates = [...rows.values()].slice(0, 50);
+    // Retrieve official HTS data: keyword hits -> likely headings -> full heading subtrees
+    const retrieval = await retrieveCandidates(norm.searchKeywords);
+    const candidates = retrieval.candidates;
     if (!candidates.length) {
-      stage('Retrieve HTS data', 'unavailable', errors.length ? `USITC lookup failed (${errors[0]}).` : 'USITC returned no matching tariff lines.');
+      stage('Retrieve HTS data', 'unavailable', retrieval.notes.length ? `USITC lookup failed (${retrieval.notes[0]}).` : `USITC returned no tariff lines for: ${norm.searchKeywords.join(', ')}.`);
       report.summary.push('Official tariff data could not be retrieved, so no classification was suggested. Nothing was guessed from the model\'s memory.');
       return finish('partial');
     }
-    stage('Retrieve HTS data', errors.length ? 'partial' : 'ok', `${candidates.length} tariff line(s) retrieved from USITC.`);
+    stage('Retrieve HTS data', retrieval.notes.length || retrieval.stale ? 'partial' : 'ok',
+      `${candidates.length} tariff line(s) from heading(s) ${retrieval.headings.join(', ')} on hts.usitc.gov.${retrieval.stale ? ` USITC was unreachable, so a saved copy from ${retrieval.retrievedAt.toISOString().slice(0, 10)} was used.` : ''}`);
 
     const result = await classify(norm.normalizedProduct, candidates);
-    const retrievedAt = new Date();
+    const retrievedAt = retrieval.retrievedAt;
+    const release = await currentRelease();
+    const effective = releaseLabel(release);
     for (const c of result.classifications) {
       const id = `usitc-${c.row.htsno}`;
       report.sources.push({
         id, title: `HTSUS ${c.row.htsno}`, url: SOURCE_INFO.urlFor(c.row.htsno), authority: SOURCE_INFO.authority, retrievedAt,
-        effectiveDate: null,
+        effectiveDate: effective,
         excerpt: `${c.row.description} | General: ${c.row.general || 'n/a'}`,
-        limitations: 'The API does not report the HTS edition or effective date; confirm on hts.usitc.gov. The code is an AI-assisted suggestion, not a CBP determination.',
+        limitations: `${effective ? `Schedule revision at retrieval: ${effective}.` : 'The HTS revision could not be determined; confirm on hts.usitc.gov.'} ${retrieval.stale ? 'Saved copy used because USITC was unreachable. ' : ''}Additional duties (Chapter 99 and other tariff programs) are not included in this rate. The code is an AI-assisted suggestion, not a CBP determination.`,
       });
       report.classifications.push({
-        htsno: c.row.htsno, description: c.row.description, generalRate: c.row.general, rate: parseGeneralRate(c.row.general),
+        htsno: c.row.htsno, description: c.row.description, generalRate: c.row.general, rate: parseGeneralRate(c.row.general), additionalDutyNote: Boolean(c.row.additionalDutyNote),
         reasoning: c.reasoning, missingInfo: c.missingInfo, confidence: c.confidence, sourceIds: [id],
       });
       report.findings.push({

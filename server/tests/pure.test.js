@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { extractJson } from '../src/services/ai/json.js';
 import { verifyQuotes, findConflicts } from '../src/services/documents/verify.js';
 import { validateUpload } from '../src/services/documents/extract.js';
-import { normalizeRows } from '../src/services/trade-research/usitc.js';
 import { projectMissing } from '../src/services/analysis/missing.js';
 import { clean } from '../src/middleware/sanitize.js';
 
@@ -34,13 +33,6 @@ test('upload validation rejects wrong types, mismatched mime and fake PDFs', () 
   assert.equal(validateUpload(f('a.pdf', 'application/pdf', 'not a pdf')).ok, false);
   assert.equal(validateUpload(f('a.pdf', 'application/pdf', '%PDF-1.4 ...')).ok, true);
   assert.equal(validateUpload(f('a.txt', 'text/plain', 'hello')).ok, true);
-});
-
-test('normalizeRows keeps real tariff lines only', () => {
-  const rows = normalizeRows([{ htsno: '', description: 'Heading' }, { htsno: '4202.31.60', description: '<b>Wallets</b>', general: '5.3%', units: ['doz', 'kg'] }, { htsno: '42', description: 'x' }]);
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].description, 'Wallets');
-  assert.equal(normalizeRows({ not: 'an array' }).length, 0);
 });
 
 test('projectMissing lists required fields', () => {

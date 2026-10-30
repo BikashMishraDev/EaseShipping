@@ -9,7 +9,7 @@ export const normalizeSchema = z.object({
     intendedUse: z.string().nullable().optional(),
   }),
   missingInformation: z.array(z.object({ field: z.string(), whyItMatters: z.string() })).default([]),
-  searchKeywords: z.array(z.string().min(2).max(60)).min(1).max(5),
+  searchKeywords: z.array(z.string().min(2).max(60)).min(1).max(8),
 });
 
 export const classifySchema = z.object({
@@ -25,7 +25,9 @@ export const classifySchema = z.object({
 
 export async function normalizeProduct(project, docFields) {
   const system = `${SAFETY_PREAMBLE}
-Task: normalize the product and suggest 1-5 short search keywords for the US Harmonized Tariff Schedule (e.g. "cotton t-shirt", "leather wallet"). List information that is missing and would change the tariff classification. Do not guess attributes that were not provided.
+Task: normalize the product and propose 3-8 search keywords for the US Harmonized Tariff Schedule.
+IMPORTANT: the schedule search is a literal substring match on the schedule's own formal wording. Use short terms as they appear in tariff descriptions, include plural forms (e.g. "scarves", "shawls", "mufflers", not "scarf"), and include the main material or fiber words (e.g. "silk", "cotton") and the general product family. Prefer single words or very short phrases.
+List information that is missing and would change the tariff classification (for example fiber percentages by weight, knitted vs woven, intended use). Do not guess attributes that were not provided.
 Output: {"normalizedProduct":{"summary","productType","materials":[],"intendedUse":null},"missingInformation":[{"field","whyItMatters"}],"searchKeywords":[]}`;
   const user = `<untrusted_data>\n${JSON.stringify({ project, confirmedDocumentFields: docFields })}\n</untrusted_data>`;
   return chatJson({ system, user, schema: normalizeSchema });
@@ -34,7 +36,7 @@ Output: {"normalizedProduct":{"summary","productType","materials":[],"intendedUs
 /** Candidates MUST come from retrieved HTS rows; codes outside the set are dropped. */
 export async function classify(normalized, candidates) {
   const system = `${SAFETY_PREAMBLE}
-Task: choose up to 3 candidate HTS classifications ONLY from the provided candidate list (copy htsno exactly). Explain the reasoning from the product's stated attributes. List missing information that could change the result. Set confidence only when justified; otherwise null. These are suggestions, not customs determinations.
+Task: choose up to 3 candidate HTS classifications ONLY from the provided candidate list (copy htsno exactly). Each candidate's description is its full hierarchy (parent > child); use it, and compare the product's stated material percentages and construction against each branch. Explain the reasoning from the product's stated attributes. List missing information that could change the result. Set confidence only when justified; otherwise null. These are suggestions, not customs determinations.
 Also list up to 4 product-specific compliance areas worth checking (e.g. which US agencies commonly regulate this kind of product) as short titles with plain explanations; do not state them as confirmed requirements.
 Output: {"classifications":[{"htsno","reasoning","missingInfo":[],"confidence":null}],"productSpecificChecks":[{"title","explanation"}],"notes":""}`;
   const user = `<untrusted_data>\n${JSON.stringify({ product: normalized, candidates: candidates.map((c) => ({ htsno: c.htsno, description: c.description, general: c.general })) })}\n</untrusted_data>`;
