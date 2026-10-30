@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-paper: #f4f6f5;
+  --color-ink: #17232b;
+  --color-slate: #4d5d66;
+  --color-harbor: #0f5c63;
+  --color-harbor-dark: #0b454b;
+  --color-rust: #a8431e;
+  --color-moss: #2f6b3f;
+  --color-amber: #8a6410;
+  --color-line: #d3dad8;
+  --color-mist: #e6ecea;
+}
+
+html { background: var(--color-paper); color: var(--color-ink); }
+body { font-family: var(--font-sans); line-height: 1.55; }
+:focus-visible { outline: 2px solid var(--color-harbor); outline-offset: 2px; }
+@media print {
+  .no-print { display: none !important; }
+  body, html { background: #fff; }
+  .print-card { border: none !important; box-shadow: none !important; padding: 0 !important; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
