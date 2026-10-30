@@ -26,8 +26,9 @@ npm test                                   # unit tests (no database needed); AP
 MONGODB_URI_TEST=mongodb://127.0.0.1:27017/easeshipping_test npm test   # includes API/integration tests
 ```
 
-## Features
+## Features Implemented
 
+| # | Requirement | Code | Verified here |
 |---|---|---|---|
 | 1 | Create and manage a project | `routes/projects.js`, `NewProject.jsx`, `Overview.jsx` | Code written; API test written, not run |
 | 2 | Product and shipment details | `ProjectForm.jsx`, zod schema in `projects.js` | Syntax checked; not run |
